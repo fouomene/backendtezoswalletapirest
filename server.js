@@ -150,7 +150,9 @@ app.use(session({
 
 let reponse = {
     status:0,
-    message:''
+    message:'',
+    pkh:'',
+    balance:0
 }
 
 
@@ -225,10 +227,10 @@ app.post('/wallet/api/savealphanetaccount',function (req,res) {
     if(alphanetFaucetAccount && emailusers)
     {    
         // stringify JSON Object
-        var alphanetFaucetAccountString = JSON.stringify(alphanetFaucetAccount);
-        console.log(alphanetFaucetAccountString); 
+       // var alphanetFaucetAccountString = JSON.stringify(alphanetFaucetAccount);
+        //console.log(alphanetFaucetAccountString); 
         console.log("Connected!");
-        var sql = `UPDATE users SET alphFaucetAccount ='${alphanetFaucetAccountString}', active=1 WHERE (email_users = '${emailusers}')`;
+        var sql = `UPDATE users SET alphFaucetAccount ='${alphanetFaucetAccount}', active=1 WHERE (email_users = '${emailusers}')`;
         connection.query(sql, function (err, result) {
             if (err) {
                 reponse.status=404;
@@ -236,8 +238,12 @@ app.post('/wallet/api/savealphanetaccount',function (req,res) {
                 res.send(reponse);
             }
 
+            var alphanetFaucetAccountJson = JSON.parse(alphanetFaucetAccount);
+            console.log(alphanetFaucetAccountJson);
+
             reponse.status=200;
             reponse.message = 'Succes save!!';
+            reponse.pkh = alphanetFaucetAccountJson.pkh; 
             console.log("Succes save!!");
             res.send(reponse);
         });
@@ -246,7 +252,7 @@ app.post('/wallet/api/savealphanetaccount',function (req,res) {
     }else {
 
         reponse.status=201;
-        reponse.message = 'tout les champs doivent etre renseigner';
+        reponse.message = 'all fields must be filled';
         res.send(reponse);
     }
 })
@@ -305,6 +311,8 @@ app.get('/wallet/api/balanceaccount/:email', function (req, res) {
         }
         if (result) {
 
+            if ( result[0].alphFaucetAccount != null) {  
+            
                 alphanetFaucetAccount = JSON.parse(result[0].alphFaucetAccount);
                 console.log(alphanetFaucetAccount);
                 var accountInfoPromise = accountInfo(alphanetFaucetAccount.pkh);
@@ -314,7 +322,15 @@ app.get('/wallet/api/balanceaccount/:email', function (req, res) {
                 }, function(err) {
                     console.log(err);
                 })     
+            }else{
 
+                reponse.pkh = 'vide';
+                reponse.balance = 0;
+                res.send(JSON.stringify([{"block_level":0,"balance":0,"delegate_value":null,"account_id":"vide","manager":"vide"}]));
+
+           
+
+            }
         }
     });
     
@@ -435,7 +451,7 @@ app.get('/wallet/api/activeaccount/:email', function (req, res) {
     }else {
 
         reponse.status=201;
-        reponse.message = 'tout les champs doivent etre renseigner';
+        reponse.message = 'all fields must be filled';
         res.send(reponse);
     }
 })
@@ -514,7 +530,7 @@ app.post('/wallet/api/transferetezos',function (req,res) {
     }else {
 
         reponse.status=201;
-        reponse.message = 'tout les champs doivent etre renseigner';
+        reponse.message = 'all fields must be filled';
         res.send(reponse);
     }
 })
@@ -534,6 +550,15 @@ app.get('/wallet/api/find/:email', function (req, res) {
         }
         if (result) {
             console.log(result);
+            var alphanetFaucetAccount = JSON.parse(result[0].alphFaucetAccount);
+            console.log(alphanetFaucetAccount);
+            result[0].alphFaucetAccount=alphanetFaucetAccount;
+            var keystore = JSON.parse(result[0].keystore);
+            console.log(keystore);
+            result[0].keystore=keystore;
+
+
+
             res.send(result[0]);
         }
     });
@@ -564,7 +589,20 @@ app.post('/wallet/api/authentification',function (req,res) {
                     if(result[0].password_users === password)
                     {
                         req.session.users=result[0];
+                       if ( result[0].alphFaucetAccount != null) {
+                        var alphanetFaucetAccount = JSON.parse(result[0].alphFaucetAccount);
+                        console.log(alphanetFaucetAccount);
+                       // result[0].alphFaucetAccount=alphanetFaucetAccount;
+                        
+                        if (result[0].active=0 ) {reponse.pkh='vide';}else{ 
+                            
+                            reponse.pkh = alphanetFaucetAccount.pkh;
+                        
+                        }
+                    }else{
+                        reponse.pkh='vide';
 
+                    }  
                         reponse.status=200;
                         reponse.message = 'Success connected !!';
                         console.log("Success connected !!");
@@ -574,17 +612,24 @@ app.post('/wallet/api/authentification',function (req,res) {
                         //res.render('auths/authentification', {error: `mot de passe incorrect veuillez renseigner le bon mot de passe`});
 
                         reponse.status=201;
-                        reponse.message = 'mot de passe incorrect veuillez renseigner le bon mot de passe';
+                        reponse.message = 'incorrect password please fill in the correct password';
                         res.send(reponse);
 
                     }
                     console.log("ok");
+                }else{
+                    //res.render('auths/authentification', {error: `mot de passe incorrect veuillez renseigner le bon mot de passe`});
+
+                    reponse.status=201;
+                    reponse.message = 'Incorrect password or login';
+                    res.send(reponse);
+
                 }
             });
 
     }else {
         reponse.status=201;
-        reponse.message = 'tout les champs doivent etre renseigner';
+        reponse.message = 'all fields must be filled';
         res.send(reponse);
     }
 })
@@ -636,7 +681,7 @@ app.post('/wallet/api/creer',function (req,res) {
     }else {
 
         reponse.status=201;
-        reponse.message = 'tout les champs doivent etre renseigner';
+        reponse.message = 'all fields must be filled';
         res.send(reponse);
     }
 })
